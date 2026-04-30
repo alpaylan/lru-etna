@@ -25,9 +25,9 @@ hashbrown = { version = "0.17.0", optional = true }
 # and the etna module). Placed in main [dependencies] so the bin target
 # links against them; they are only referenced from the workload harness.
 proptest = "1.0"
-quickcheck = { path = "/Users/akeles/Programming/projects/PbtBenchmark/quickcheck-rs", features = ["etna"] }
-quickcheck_macros = { path = "/Users/akeles/Programming/projects/PbtBenchmark/quickcheck-rs/quickcheck_macros" }
-crabcheck = { path = "/Users/akeles/Programming/projects/PbtBenchmark/crabcheck", features = ["profiling"] }
+quickcheck = { git = "https://github.com/alpaylan/quickcheck.git", branch = "master", features = ["etna"] }
+quickcheck_macros = { git = "https://github.com/alpaylan/quickcheck.git", branch = "master" }
+crabcheck = { git = "https://github.com/alpaylan/crabcheck.git", branch = "main", features = ["profiling"] }
 rand = { version = "0.9", default-features = false, features = ["os_rng", "small_rng", "thread_rng"] }
 hegeltest = "0.3.7"
 

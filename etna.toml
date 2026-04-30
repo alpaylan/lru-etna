@@ -1,6 +1,7 @@
 name = "lru"
 description = "An LRU cache implementation — ETNA workload."
 language = "rust"
+strategies = ["proptest", "quickcheck", "crabcheck", "hegel"]
 crate = "lru"
 base_commit = "dac07e3edc896f6caec5180ac179b89044399c59"
 
