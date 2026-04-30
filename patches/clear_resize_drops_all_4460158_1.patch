@@ -1,0 +1,24 @@
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1608,7 +1608,9 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
+         }
+
+         while self.map.len() > cap.get() {
+-            self.pop_lru();
++            // BUG: bypass pop_lru's value extraction. remove_last frees the
++            // Box shell but the inner MaybeUninit<K>/<V> never get dropped.
++            let _ = self.remove_last();
+         }
+         self.map.shrink_to_fit();
+
+@@ -1635,7 +1637,9 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
+     /// assert_eq!(cache.len(), 0);
+     /// ```
+     pub fn clear(&mut self) {
+-        while self.pop_lru().is_some() {}
++        // BUG: bypass pop_lru's value extraction. remove_last frees the Box
++        // shell but the inner MaybeUninit<K>/<V> never get dropped.
++        while self.remove_last().is_some() {}
+     }
+
+     /// An iterator visiting all entries in most-recently used order. The iterator element type is
