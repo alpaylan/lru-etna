@@ -16,7 +16,8 @@ prs = [219]
 summary = "`<LruCache as Clone>::clone` forwarded `self.cap()` (which is `usize::MAX` for an unbounded cache) into `HashMap::with_capacity_and_hasher`, panicking with 'Hash table capacity overflow' the first time anyone cloned an unbounded cache. The fix special-cases `is_unbounded()` and uses `self.len()` for the new map's initial capacity instead."
 
 [tasks.injection]
-kind = "marauders"
+kind = "patch"
+patch = "patches/clone_unbounded_no_panic_3ec42b6_1.patch"
 files = ["src/lib.rs"]
 locations = [{ file = "src/lib.rs", symbol = "LruCache::clone" }]
 
@@ -44,7 +45,8 @@ prs = [29]
 summary = "`LruCache::pop` removed the entry from the underlying hashmap but never detached the corresponding node from the linked list. Subsequent operations (iter, pop_lru, evict-on-put) walked through the orphaned node, leading to memory unsafety and observable wrong-key-in-iter behaviour."
 
 [tasks.injection]
-kind = "marauders"
+kind = "patch"
+patch = "patches/pop_iter_consistent_5f4a46a_1.patch"
 files = ["src/lib.rs"]
 locations = [{ file = "src/lib.rs", symbol = "LruCache::pop" }]
 
@@ -72,7 +74,8 @@ prs = [79]
 summary = "The cache's `Drop` impl ran `ptr::drop_in_place(&mut e.key as *mut _)`. Type inference picked `*mut MaybeUninit<K>`, so the drop targeted the MaybeUninit wrapper (a no-op) rather than the inner `K`/`V`, leaking every entry's key and value when the cache itself was dropped. The fix uses `e.key.as_mut_ptr()` to obtain a `*mut K` so the inner destructor actually runs."
 
 [tasks.injection]
-kind = "marauders"
+kind = "patch"
+patch = "patches/drop_impl_drops_all_37dbda0_1.patch"
 files = ["src/lib.rs"]
 locations = [{ file = "src/lib.rs", symbol = "<LruCache as Drop>::drop" }]
 
@@ -131,7 +134,8 @@ prs = [104]
 summary = "`LruCache::pop` removed an entry from the hashmap and returned its value but never dropped the entry's key. The key sat in the freed slot's `MaybeUninit<K>` and was leaked, so any K with a non-trivial destructor (Box, Rc, custom Drop) leaked once per `pop` call. The fix adds an explicit `ptr::drop_in_place(old_node.key.as_mut_ptr())` before the slot is reused."
 
 [tasks.injection]
-kind = "marauders"
+kind = "patch"
+patch = "patches/pop_drops_key_ea64c8f_1.patch"
 files = ["src/lib.rs"]
 locations = [{ file = "src/lib.rs", symbol = "LruCache::pop" }]
 

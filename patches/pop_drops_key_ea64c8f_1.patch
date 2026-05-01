@@ -1,0 +1,39 @@
+# marauders: name=pop_correctness tags=[etna]
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1282,22 +1282,18 @@
+         K: Borrow<Q>,
+         Q: Hash + Eq + ?Sized,
+     {
+-        match self.map.remove(KeyWrapper::from_ref(k)) {
+-            None => None,
+-            Some(old_node) => {
+-                let mut old_node = unsafe {
+-                    let mut old_node = *Box::from_raw(old_node.as_ptr());
+-                    ptr::drop_in_place(old_node.key.as_mut_ptr());
+-
+-                    old_node
+-                };
+-
+-                self.detach(&mut old_node);
+-
+-                let LruEntry { key: _, val, .. } = old_node;
+-                unsafe { Some(val.assume_init()) }
+-            }
+-        }
++        match self.map.remove(KeyWrapper::from_ref(k)) {
++            None => None,
++            Some(old_node) => {
++                let mut old_node = unsafe { *Box::from_raw(old_node.as_ptr()) };
++                // BUG: skip dropping the key in place; it is left in the
++                // MaybeUninit slot and leaks when the LruEntry is freed
++                // (MaybeUninit's drop glue does not run the inner T's drop).
++                self.detach(&mut old_node);
++                let LruEntry { key: _, val, .. } = old_node;
++                unsafe { Some(val.assume_init()) }
++            }
++        }
+     }
+ 
+     /// Removes and returns the key and the value corresponding to the key from the cache or

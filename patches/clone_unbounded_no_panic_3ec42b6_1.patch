@@ -1,0 +1,24 @@
+# marauders: name=clone_unbounded_no_panic tags=[etna]
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -201,15 +201,10 @@
+ {
+     fn clone(&self) -> Self {
+         let mut new_lru = {
+-            let map_cap = if self.is_unbounded() {
+-                self.len()
+-            } else {
+-                self.cap().get()
+-            };
+-            LruCache::construct(
+-                self.cap(),
+-                HashMap::with_capacity_and_hasher(map_cap, self.map.hasher().clone()),
+-            )
++            LruCache::construct(
++                self.cap(),
++                HashMap::with_capacity_and_hasher(self.cap().get(), self.map.hasher().clone()),
++            )
+         };
+ 
+         for (key, value) in self.iter().rev() {
