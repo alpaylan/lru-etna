@@ -1,0 +1,26 @@
+# marauders: name=drop_impl_drops_all tags=[etna]
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1715,11 +1715,16 @@
+ 
+ impl<K, V, S> Drop for LruCache<K, V, S> {
+     fn drop(&mut self) {
+-        self.map.drain().for_each(|(_, node)| unsafe {
+-            let mut node = *Box::from_raw(node.as_ptr());
+-            ptr::drop_in_place((node).key.as_mut_ptr());
+-            ptr::drop_in_place((node).val.as_mut_ptr());
+-        });
++        self.map.drain().for_each(|(_, node)| unsafe {
++            let mut node = *Box::from_raw(node.as_ptr());
++            // BUG: cast `&mut MaybeUninit<K>` straight to `*mut _`. Type
++            // inference picks `*mut MaybeUninit<K>`, so `drop_in_place` is
++            // called against the MaybeUninit wrapper (a no-op) and the
++            // inner K is leaked. Same for V. This mirrors the original
++            // pre-37dbda0 Drop impl that motivated the as_mut_ptr fix.
++            ptr::drop_in_place(&mut node.key as *mut _);
++            ptr::drop_in_place(&mut node.val as *mut _);
++        });
+         // We rebox the head/tail, and because these are maybe-uninit
+         // they do not have the absent k/v dropped.
+ 

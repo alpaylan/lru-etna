@@ -201,7 +201,6 @@ where
 {
     fn clone(&self) -> Self {
         let mut new_lru = {
-            /*| clone_unbounded_no_panic [etna] */
             let map_cap = if self.is_unbounded() {
                 self.len()
             } else {
@@ -211,14 +210,6 @@ where
                 self.cap(),
                 HashMap::with_capacity_and_hasher(map_cap, self.map.hasher().clone()),
             )
-            /*|| clone_unbounded_no_panic_3ec42b6_1 */
-            /*|
-            LruCache::construct(
-                self.cap(),
-                HashMap::with_capacity_and_hasher(self.cap().get(), self.map.hasher().clone()),
-            )
-            */
-            /* |*/
         };
 
         for (key, value) in self.iter().rev() {
@@ -1291,7 +1282,6 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        /*| pop_correctness [etna] */
         match self.map.remove(KeyWrapper::from_ref(k)) {
             None => None,
             Some(old_node) => {
@@ -1308,44 +1298,6 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
                 unsafe { Some(val.assume_init()) }
             }
         }
-        /*|| pop_iter_consistent_5f4a46a_1 */
-        /*|
-        match self.map.remove(KeyWrapper::from_ref(k)) {
-            None => None,
-            Some(old_node) => {
-                // BUG: forget to detach the node from the linked list. The
-                // historical commit (5f4a46a) freed the Box outright, leaving
-                // dangling prev/next pointers in the list and corrupting any
-                // subsequent walk; here we use `core::ptr::read` to copy the
-                // entry out without freeing the heap allocation, so the
-                // missing-detach symptom (orphan keeps appearing in iter /
-                // poisons pop_lru) is observable without the corruption
-                // collapsing into raw UB. The behaviour the fix restores —
-                // an entry that has been popped is no longer threaded into
-                // the LRU linked list — is the same.
-                let mut on_stack = unsafe { core::ptr::read(old_node.as_ptr()) };
-                unsafe { ptr::drop_in_place(on_stack.key.as_mut_ptr()); }
-                let LruEntry { key: _, val, .. } = on_stack;
-                unsafe { Some(val.assume_init()) }
-            }
-        }
-        */
-        /*|| pop_drops_key_ea64c8f_1 */
-        /*|
-        match self.map.remove(KeyWrapper::from_ref(k)) {
-            None => None,
-            Some(old_node) => {
-                let mut old_node = unsafe { *Box::from_raw(old_node.as_ptr()) };
-                // BUG: skip dropping the key in place; it is left in the
-                // MaybeUninit slot and leaks when the LruEntry is freed
-                // (MaybeUninit's drop glue does not run the inner T's drop).
-                self.detach(&mut old_node);
-                let LruEntry { key: _, val, .. } = old_node;
-                unsafe { Some(val.assume_init()) }
-            }
-        }
-        */
-        /* |*/
     }
 
     /// Removes and returns the key and the value corresponding to the key from the cache or
@@ -1763,26 +1715,11 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
 
 impl<K, V, S> Drop for LruCache<K, V, S> {
     fn drop(&mut self) {
-        /*| drop_impl_drops_all [etna] */
         self.map.drain().for_each(|(_, node)| unsafe {
             let mut node = *Box::from_raw(node.as_ptr());
             ptr::drop_in_place((node).key.as_mut_ptr());
             ptr::drop_in_place((node).val.as_mut_ptr());
         });
-        /*|| drop_impl_drops_all_37dbda0_1 */
-        /*|
-        self.map.drain().for_each(|(_, node)| unsafe {
-            let mut node = *Box::from_raw(node.as_ptr());
-            // BUG: cast `&mut MaybeUninit<K>` straight to `*mut _`. Type
-            // inference picks `*mut MaybeUninit<K>`, so `drop_in_place` is
-            // called against the MaybeUninit wrapper (a no-op) and the
-            // inner K is leaked. Same for V. This mirrors the original
-            // pre-37dbda0 Drop impl that motivated the as_mut_ptr fix.
-            ptr::drop_in_place(&mut node.key as *mut _);
-            ptr::drop_in_place(&mut node.val as *mut _);
-        });
-        */
-        /* |*/
         // We rebox the head/tail, and because these are maybe-uninit
         // they do not have the absent k/v dropped.
 
